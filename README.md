@@ -2,6 +2,9 @@
 
 Implementation of [End-To-End Memory Networks](http://arxiv.org/abs/1503.08895) with sklearn-like interface using Tensorflow. Tasks are from the [bAbl](http://arxiv.org/abs/1502.05698) dataset.
 
+## songhune edited
+
+In order to make my thesis, I've been changing the original code for experiment, if there is any inconvience including licence issues(though I think it would be only used for academical reasons), please contact me with songhune@ajou.ac.kr. Thank you!
 
 ### Get Started
 
