@@ -24,7 +24,7 @@ tf.flags.DEFINE_integer("epochs", 60, "Number of epochs to train for.")
 tf.flags.DEFINE_integer("embedding_size", 40, "Embedding size for embedding matrices.")
 tf.flags.DEFINE_integer("memory_size", 50, "Maximum size of memory.")
 tf.flags.DEFINE_integer("random_state", None, "Random state.")
-tf.flags.DEFINE_string("data_dir", "data/tasks_1-20_v1-2/en/", "Directory containing bAbI tasks")
+tf.flags.DEFINE_string("data_dir", "memn2n/data/tasks_1-20_v1-2/en/", "Directory containing bAbI tasks")
 tf.flags.DEFINE_string("output_file", "scores.csv", "Name of output file for final bAbI accuracy scores.")
 FLAGS = tf.flags.FLAGS
 # load all train/test data
@@ -128,8 +128,8 @@ with tf.Session() as sess:
 
         if i % FLAGS.evaluation_interval == 0:
             train_accs = []
-            for start in range(0, n_train, n_train/20):
-                end = start + n_train/20
+            for start in range(0, n_train, int(n_train/20)):
+                end = start + int(n_train/20)
                 s = trainS[start:end]
                 q = trainQ[start:end]
                 pred = model.predict(s, q)
@@ -137,8 +137,8 @@ with tf.Session() as sess:
                 train_accs.append(acc)
 
             val_accs = []
-            for start in range(0, n_val, n_val/20):
-                end = start + n_val/20
+            for start in range(0, n_val, int(n_val/20)):
+                end = start + int(n_val/20)
                 s = valS[start:end]
                 q = valQ[start:end]
                 pred = model.predict(s, q)
@@ -146,8 +146,8 @@ with tf.Session() as sess:
                 val_accs.append(acc)
 
             test_accs = []
-            for start in range(0, n_test, n_test/20):
-                end = start + n_test/20
+            for start in range(0, n_test, int(n_test/20)):
+                end = start + int(n_test/20)
                 s = testS[start:end]
                 q = testQ[start:end]
                 pred = model.predict(s, q)
