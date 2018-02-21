@@ -30,9 +30,9 @@ These files are also a good example of usage.
 
 ### Requirements
 
-* tensorflow 1.0
-* scikit-learn 0.17.1
-* six 1.10.0
+* tensorflow 1.3(or up-to-date)
+* scikit-learn 0.18.2
+* six 1.11.0
 
 ### Single Task Results
 songhune edited: on typing
