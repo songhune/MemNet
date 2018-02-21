@@ -98,39 +98,40 @@ def vectorize_data(data, word_idx, sentence_size, memory_size, max_story_size):
     Q = []
     A = []
     for story, query, answer in data:
+        # manipulate query
+        # songhune edited: in order to compare query to each ss memory slot, we first vectorize query
+        # later, i think it has to be detached to story component
+        lq = max(0, sentence_size - len(query))
+        q = [word_idx[w] for w in query] + [0] * lq
+
         ss = []
         for i, sentence in enumerate(story, 1):
             # 1부터 시작한다. #ls는 sentence size(7개)에서 현재 문장이 들어가 있는 만큼의 공간을 빼줌
             ls = max(0, sentence_size - len(sentence))
             ss.append([word_idx[w] for w in sentence] + [0] * ls)  # 뭘 붙이냐 하면 word index를 붙인다.
-
+            if (i> memory_size):
+                temp = np.argmin(softmax(np.array(ss).dot(q)))
+                print(temp)
+                ss.remove(ss[temp])
         # take only the most recent sentences that fit in memory
-        '''일단 전체 메모리를 뱉어내게 한다. '''
-        ss = ss[::-1][:max_story_size][::-1]
+        if len(ss)<memory_size:
+            ss = ss[::-1][:memory_size][::-1]
+        #else:
+         #   for i in range()
         # 역수로 출력 / 전체 크기만큼 / 역수로 출력
-        '''
-        if story_size<memory_size
-            ss =[::-1][:memory_size][::-1]
 
-        elif story_size>memory_size
-            if memory full
-            ss = 기존
-        이럴 필요가 있는가?
-        '''
         # Make the last word of each sentence the time 'word' which corresponds to vector of lookup table
         for i in range(len(ss)):
             # 30에서 메모리 사이즈 10개 빼고 i만큼 빼고, ss의 길이를 붙인다. 룩업 테이블과 연관됨
-            ss[i][-1] = len(word_idx) - max_story_size - i + len(ss)
+            ss[i][-1] = len(word_idx) - memory_size - i + len(ss)
 
         # pad  '0' to memory_size
         # songhune edited: 메모리 사이즈에서 story size를 빼는 것이 아니라 전체 크기에서 메모리 사이즈를 반환한다.
-        lm = max(0, max_story_size - len(ss))
+        lm = max(0, memory_size - len(ss))
         for _ in range(lm):
             ss.append([0] * sentence_size)
 
-        # manipulate query
-        lq = max(0, sentence_size - len(query))
-        q = [word_idx[w] for w in query] + [0] * lq
+
 
         y = np.zeros(len(word_idx) + 1)  # 0 is reserved for nil word
         for a in answer:
@@ -143,3 +144,8 @@ def vectorize_data(data, word_idx, sentence_size, memory_size, max_story_size):
     print(np.array(Q).shape)
     print(np.array(A).shape)
     return np.array(S), np.array(Q), np.array(A)
+
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()

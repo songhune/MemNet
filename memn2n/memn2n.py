@@ -85,7 +85,7 @@ class MemN2N(object):
             nonlin: Non-linearity. Defaults to `None`.
 
             initializer: Weight initializer. Defaults to `tf.random_normal_initializer(stddev=0.1)`.
-[t]    optimizer: Optimizer algorithm used for SGD. Defaults to `tf.train.GDO(learning_rate=1e-2)`.
+            [t]    optimizer: Optimizer algorithm used for SGD. Defaults to `tf.train.GDO(learning_rate=1e-2)`.
 
             encoding: A function returning a 2D Tensor (sentence_size, embedding_size). Defaults to `position_encoding`.
 
@@ -105,7 +105,7 @@ class MemN2N(object):
         self._nonlin = nonlin
         self._init = initializer
         self._name = name
-#######선언들
+        # 선언들
         self._build_inputs()
         self._build_vars()
 
@@ -150,8 +150,7 @@ class MemN2N(object):
         self._sess.run(init_op)
 
     '''
-    여기 LPU인 경우에 한해서 지랄을 해야한다.
-    아웃풋
+    여기 LPU인 경우에 한해서 아웃풋을 만들 필요가 있다.
     
     '''
     def _build_inputs(self):
@@ -166,6 +165,7 @@ class MemN2N(object):
         with tf.variable_scope(self._name):
             nil_word_slot = tf.zeros([1, self._embedding_size])
             A = tf.concat(axis=0, values=[ nil_word_slot, self._init([self._vocab_size-1, self._embedding_size]) ])
+            #print('이것이 A다아아아아아아',self._init([self._vocab_size-1, self._embedding_size]))
             C = tf.concat(axis=0, values=[ nil_word_slot, self._init([self._vocab_size-1, self._embedding_size]) ])
             self.A_1 = tf.Variable(A, name="A")
             self.C = []
@@ -286,3 +286,15 @@ class MemN2N(object):
         """
         feed_dict = {self._stories: stories, self._queries: queries}
         return self._sess.run(self.predict_log_proba_op, feed_dict=feed_dict)
+'''
+    def LPU(self, stories, queries):
+        """
+
+        :param stories:
+        :param queries:
+        :return:
+        """
+        while(EOF):
+            edited_ss= []
+            percentage =
+'''
