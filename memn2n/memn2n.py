@@ -165,7 +165,7 @@ class MemN2N(object):
             C = tf.concat(axis=0, values=[ nil_word_slot, self._init([self._vocab_size-1, self._embedding_size]) ])
 
             self.A_1 = tf.Variable(A, name="A")
-
+            print('A',A,'A_1',self.A_1)
             self.C = []
 
             for hopn in range(self._hops):
@@ -185,33 +185,48 @@ class MemN2N(object):
             # Use A_1 for thee question embedding as per Adjacent Weight Sharing
             q_emb = tf.nn.embedding_lookup(self.A_1, queries)
             u_0 = tf.reduce_sum(q_emb * self._encoding, 1)
+            print('u_0',u_0)
             u = [u_0]
-
+            print('u',u)
             for hopn in range(self._hops):
                 if hopn == 0:
-                    m_emb_A = tf.nn.embedding_lookup(self.A_1, stories)
+                    print('story',stories.shape)
+                    m_emb_A = tf.nn.embedding_lookup(self.A_1, stories)#(?,50,8,20)
+                    #각 단어마다 dim=20인 벡터.
+                    print('m_emb+A',m_emb_A)#shape=(?, 50, 8, 20)
                     m_A = tf.reduce_sum(m_emb_A * self._encoding, 2)
+                    '''reduce sum을 하게 되면 dimension이 하나 줄어드는데, 
+                    이말인즉슨 모든 문장에 든 각각의 "단어"를 하나로 sum을 한다. '''
+                    print('self._encoding',self._encoding)
+                    print('shape m_A//single=hop', m_A)
 
                 else:
                     with tf.variable_scope('hop_{}'.format(hopn - 1)):
                         m_emb_A = tf.nn.embedding_lookup(self.C[hopn - 1], stories)
-                        m_A = tf.reduce_sum(m_emb_A * self._encoding, 2)
-
+                        m_A = tf.reduce_sum(m_emb_A * self._encoding, 2)#(?,50,20)
+                        print('shape m_A//multiple_hop',m_A)
                 # hack to get around no reduce_dot
                 u_temp = tf.transpose(tf.expand_dims(u[-1], -1), [0, 2, 1])
+                print('u_temp', u_temp)#shape=(?, 1, 20)
                 dotted = tf.reduce_sum(m_A * u_temp, 2)
-
+                print('m+A, u_temp',m_A*u_temp)
+                '''not tensor multiplication'''
                 # Calculate probabilities
                 probs = tf.nn.softmax(dotted)
+                print('prto', probs)#shape=(?, 50)
 
                 probs_temp = tf.transpose(tf.expand_dims(probs, -1), [0, 2, 1])
+                print('probs+tmp', probs_temp)#shape=(?, 1, 50)
+
                 with tf.variable_scope('hop_{}'.format(hopn)):
                     m_emb_C = tf.nn.embedding_lookup(self.C[hopn], stories)
                 m_C = tf.reduce_sum(m_emb_C * self._encoding, 2)
 
                 c_temp = tf.transpose(m_C, [0, 2, 1])
-                o_k = tf.reduce_sum(c_temp * probs_temp, 2)
+                print('shape c_tmp', c_temp)#c_tmp (?,20,50)
 
+                o_k = tf.reduce_sum(c_temp * probs_temp, 2)
+                print('o_k',o_k) #shape(?,20)
                 # Dont use projection layer for adj weight sharing
                 # u_k = tf.matmul(u[-1], self.H) + o_k
 
@@ -222,9 +237,12 @@ class MemN2N(object):
                     u_k = nonlin(u_k)
 
                 u.append(u_k)
+                print('u',u)
+                print('u_k',u_k)#u_k shape (?,20)
 
             # Use last C for output (transposed)
             with tf.variable_scope('hop_{}'.format(self._hops)):
+                print('C',self.C)
                 return tf.matmul(u_k, tf.transpose(self.C[-1], [1,0]))
 
     def batch_fit(self, stories, queries, answers, learning_rate):
