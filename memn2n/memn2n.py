@@ -14,26 +14,24 @@ def position_encoding(sentence_size, embedding_size):
     Position Encoding described in section 4.1 [1]
     """
     encoding = np.ones((embedding_size, sentence_size), dtype=np.float32)
-    #1로 다 채운다, 사이즈는 임베딩 사이즈가 가로줄 수, 문장 개수가 세로줄 수
     ls = sentence_size+1
     le = embedding_size+1
     for i in range(1, le):
         for j in range(1, ls):
             encoding[i-1, j-1] = (i - (embedding_size+1)/2) * (j - (sentence_size+1)/2)
     encoding = 1 + 4 * encoding / embedding_size / sentence_size
-    # Make position encoding of time words identity to avoid modifying them
+    # Make position encoding of time words identity to avoid modifying them 
     encoding[:, -1] = 1.0
     return np.transpose(encoding)
-    #일단은 1로 채워진 매트릭스가 배출된다...!
 
 def zero_nil_slot(t, name=None):
     """
     Overwrites the nil_slot (first row) of the input Tensor with zeros.
-    0만으로 채운다
+
     The nil_slot is a dummy slot and should not be trained and influence
     the training algorithm.
     """
-    with tf.name_scope("zero_nil_slot", name, [t]) as name:
+    with tf.name_scope("zero_nil_slot",name,[t]) as name:
         t = tf.convert_to_tensor(t, name="t")
         s = tf.shape(t)[1]
         z = tf.zeros(tf.stack([1, s]))
@@ -42,24 +40,28 @@ def zero_nil_slot(t, name=None):
 def add_gradient_noise(t, stddev=1e-3, name=None):
     """
     Adds gradient noise as described in http://arxiv.org/abs/1511.06807 [2].
-    We consider a simple technique of adding time-dependent Gaussian noise to the gradient g at every
-    training step 가우시안 노이즈를 그라디언트에 넣는다.
+
     The input Tensor `t` should be a gradient.
 
     The output will be `t` + gaussian noise.
 
     0.001 was said to be a good fixed value for memory networks [2].
     """
-    with tf.name_scope("add_gradient_noise", name ,[t, stddev]) as name:
+    with tf.name_scope("add_gradient_noise",name,[t,stddev] ) as name:
         t = tf.convert_to_tensor(t, name="t")
         gn = tf.random_normal(tf.shape(t), stddev=stddev)
         return tf.add(t, gn, name=name)
 
 class MemN2N(object):
     """End-To-End Memory Network."""
-    def __init__(self, batch_size, vocab_size, sentence_size, memory_size,embedding_size, max_story_size, hops=3,  max_grad_norm=40.0, nonlin=None,
-                 initializer=tf.random_normal_initializer(stddev=0.1),
-                 encoding = position_encoding, session=tf.Session(),name='MemN2N'):
+    def __init__(self, batch_size, vocab_size, sentence_size, memory_size, embedding_size,
+        hops=3,
+        max_grad_norm=40.0,
+        nonlin=None,
+        initializer=tf.random_normal_initializer(stddev=0.1),
+        encoding=position_encoding,
+        session=tf.Session(),
+        name='MemN2N'):
         """Creates an End-To-End Memory Network
 
         Args:
@@ -85,7 +87,8 @@ class MemN2N(object):
             nonlin: Non-linearity. Defaults to `None`.
 
             initializer: Weight initializer. Defaults to `tf.random_normal_initializer(stddev=0.1)`.
-[t]    optimizer: Optimizer algorithm used for SGD. Defaults to `tf.train.GDO(learning_rate=1e-2)`.
+
+            optimizer: Optimizer algorithm used for SGD. Defaults to `tf.train.AdamOptimizer(learning_rate=1e-2)`.
 
             encoding: A function returning a 2D Tensor (sentence_size, embedding_size). Defaults to `position_encoding`.
 
@@ -99,13 +102,12 @@ class MemN2N(object):
         self._sentence_size = sentence_size
         self._memory_size = memory_size
         self._embedding_size = embedding_size
-        self._max_story_size = max_story_size
         self._hops = hops
         self._max_grad_norm = max_grad_norm
         self._nonlin = nonlin
         self._init = initializer
         self._name = name
-#######선언들
+
         self._build_inputs()
         self._build_vars()
 
@@ -149,31 +151,26 @@ class MemN2N(object):
         self._sess = session
         self._sess.run(init_op)
 
-    '''
-    여기 LPU인 경우에 한해서 지랄을 해야한다.
-    아웃풋
-    
-    '''
+
     def _build_inputs(self):
-        #input을 만드는 함수, 크기를 맞추기 위해서 메모리 사이즈가 아닌 맥스 문장을 넣는다?
         self._stories = tf.placeholder(tf.int32, [None, self._memory_size, self._sentence_size], name="stories")
         self._queries = tf.placeholder(tf.int32, [None, self._sentence_size], name="queries")
         self._answers = tf.placeholder(tf.int32, [None, self._vocab_size], name="answers")
         self._lr = tf.placeholder(tf.float32, [], name="learning_rate")
 
     def _build_vars(self):
-        #variable을 만드는 함수, 즉 임베딩 매트릭스를 만든다. 0으로 나옴
         with tf.variable_scope(self._name):
             nil_word_slot = tf.zeros([1, self._embedding_size])
             A = tf.concat(axis=0, values=[ nil_word_slot, self._init([self._vocab_size-1, self._embedding_size]) ])
             C = tf.concat(axis=0, values=[ nil_word_slot, self._init([self._vocab_size-1, self._embedding_size]) ])
+
             self.A_1 = tf.Variable(A, name="A")
+
             self.C = []
 
             for hopn in range(self._hops):
                 with tf.variable_scope('hop_{}'.format(hopn)):
                     self.C.append(tf.Variable(C, name="C"))
-
 
             # Dont use projection for layerwise weight sharing
             # self.H = tf.Variable(self._init([self._embedding_size, self._embedding_size]), name="H")
@@ -186,10 +183,9 @@ class MemN2N(object):
     def _inference(self, stories, queries):
         with tf.variable_scope(self._name):
             # Use A_1 for thee question embedding as per Adjacent Weight Sharing
-            q_emb = tf.nn.embedding_lookup(self.A_1, queries) #A로 표현된 q, not B
+            q_emb = tf.nn.embedding_lookup(self.A_1, queries)
             u_0 = tf.reduce_sum(q_emb * self._encoding, 1)
             u = [u_0]
-            #print(u)
 
             for hopn in range(self._hops):
                 if hopn == 0:
@@ -223,14 +219,12 @@ class MemN2N(object):
 
                 # nonlinearity
                 if self._nonlin:
-                    #songhune edited: nonlin model for relu
-                    u_k = tf.nn.relu(u_k)
+                    u_k = nonlin(u_k)
 
                 u.append(u_k)
 
             # Use last C for output (transposed)
             with tf.variable_scope('hop_{}'.format(self._hops)):
-
                 return tf.matmul(u_k, tf.transpose(self.C[-1], [1,0]))
 
     def batch_fit(self, stories, queries, answers, learning_rate):
@@ -238,7 +232,6 @@ class MemN2N(object):
 
         Args:
             stories: Tensor (None, memory_size, sentence_size)
-            songhune edited tensor should be max_story_size
             queries: Tensor (None, sentence_size)
             answers: Tensor (None, vocab_size)
 
